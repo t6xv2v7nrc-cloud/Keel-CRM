@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Icons } from '../icons';
-import { COUNCILS } from '../../constants';
+import { COUNCILS, HOUSEHOLD_TYPES } from '../../constants';
 
 // CouncilSelect — dropdown of all London boroughs with optional "+ custom" entry.
 // `value` is the council name string, `onChange(newValue)`.
@@ -125,6 +125,31 @@ export const Donut = ({ data, size = 140, thickness = 18 }) => {
     </svg>
   );
 };
+
+// HouseholdBadge — shows Single / Couple / Family as a coloured tag
+// Falls back to plain text for free-form values.
+export const HouseholdBadge = ({ value }) => {
+  if (!value) return null;
+  const ht = HOUSEHOLD_TYPES.find(h => h.id === value);
+  if (!ht) return <span style={{ fontFamily: 'var(--futura)', fontSize: 11, color: 'var(--ink-40)' }}>{value}</span>;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '2px 8px', fontSize: 10, fontFamily: 'var(--futura)', letterSpacing: '0.08em',
+      background: ht.bg, color: ht.color, fontWeight: 600,
+    }}>
+      {ht.id === 'Family' ? '👨‍👩‍👧' : ht.id === 'Couple' ? '👫' : '👤'} {ht.label.toUpperCase()}
+    </span>
+  );
+};
+
+// HouseholdSelect — dropdown for selecting household type
+export const HouseholdSelect = ({ value, onChange, className = 'form-select', style }) => (
+  <select className={className} style={style} value={value || ''} onChange={e => onChange(e.target.value)}>
+    <option value="">— Select —</option>
+    {HOUSEHOLD_TYPES.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
+  </select>
+);
 
 export const Chip = ({ active, onClick, children, count }) => (
   <button className={`chip ${active ? 'active' : ''}`} onClick={onClick}>

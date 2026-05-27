@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Icons } from '../components/icons';
-import { StatusPill, SourceTag, Money, CouncilSelect } from '../components/ui';
+import { StatusPill, SourceTag, Money, CouncilSelect, HouseholdBadge, HouseholdSelect } from '../components/ui';
 import { useLead, useLeadActivity, useUpdateLead, useAddActivity, useCreateLead } from '../hooks/useLeads';
 import { useOfficers } from '../hooks/useOfficers';
 import { supabase } from '../lib/supabase';
@@ -454,7 +454,10 @@ export default function LeadDetail({ leadId, onBack }) {
               </div>
             ) : (
               <>
-                <h2 className="lead-name">{lead.name}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <h2 className="lead-name" style={{ margin: 0 }}>{lead.name}</h2>
+                  {lead.composition && <HouseholdBadge value={lead.composition} />}
+                </div>
                 <div className="lead-contact">
                   {lead.phone && <span><Icons.Phone size={11} />{lead.phone}</span>}
                   {lead.email && <span><Icons.Mail size={11} />{lead.email}</span>}
@@ -764,8 +767,16 @@ export default function LeadDetail({ leadId, onBack }) {
             <div style={{ padding: '4px 0' }}>
               {editing ? (
                 <div style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span className="lbl" style={{ letterSpacing: '0.10em' }}>Household</span>
+                    <HouseholdSelect
+                      value={draft.composition}
+                      onChange={v => setDraft(d => ({ ...d, composition: v }))}
+                      style={{ ...inpStyle, width: '100%' }}
+                      className=""
+                    />
+                  </div>
                   {[
-                    ['Household', 'composition'],
                     ['Benefits', 'benefits'],
                     ['Notes', 'notes'],
                   ].map(([label, field]) => (
@@ -790,18 +801,21 @@ export default function LeadDetail({ leadId, onBack }) {
                 </div>
               ) : (
                 [
-                  ['Household', lead.composition || '—'],
-                  ['Benefits', lead.benefits || '—'],
-                  ['Notes', lead.notes || '—'],
-                ].map(([k, v], i, arr) => (
+                  ['Household', lead.composition, true],
+                  ['Benefits',  lead.benefits  || '—', false],
+                  ['Notes',     lead.notes     || '—', false],
+                ].map(([k, v, isHousehold], i, arr) => (
                   <div key={k} style={{
-                    display: 'flex', justifyContent: 'space-between',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '10px 20px', fontSize: 12,
                     borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
                     gap: 12,
                   }}>
                     <span className="lbl" style={{ letterSpacing: '0.10em', flexShrink: 0 }}>{k}</span>
-                    <span style={{ color: 'var(--ink)', fontFamily: 'var(--futura)', textAlign: 'right' }}>{v}</span>
+                    {isHousehold && v
+                      ? <HouseholdBadge value={v} />
+                      : <span style={{ color: 'var(--ink)', fontFamily: 'var(--futura)', textAlign: 'right' }}>{v || '—'}</span>
+                    }
                   </div>
                 ))
               )}

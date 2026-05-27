@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { Icons } from '../components/icons';
-import { StatusPill, SourceTag, Money, Chip, CouncilSelect } from '../components/ui';
+import { StatusPill, SourceTag, Money, Chip, CouncilSelect, HouseholdBadge, HouseholdSelect } from '../components/ui';
 import { useLeads, useCreateLead, useBulkCreateLeads } from '../hooks/useLeads';
-import { STATUSES, SOURCES, COUNCILS, FAILURE_REASONS } from '../constants';
+import { STATUSES, SOURCES, COUNCILS, FAILURE_REASONS, HOUSEHOLD_TYPES } from '../constants';
 
 // ─── CSV / JSON / Email parsing ────────────────────────────────────────────
 
@@ -419,6 +419,7 @@ function AddLeadModal({ onClose }) {
     name: '', phone: '', email: '',
     source: 'whatsapp', council: 'RBKC', borough: '',
     status: 'lead', value: '', next_action: '',
+    composition: '',
     operator_split: 0.45, partner_split: 0.40, council_fee: 0.15,
   });
 
@@ -485,7 +486,11 @@ function AddLeadModal({ onClose }) {
             </div>
           </div>
           <div className="form-row">
-            <div className="form-field full">
+            <div className="form-field">
+              <label>Household type</label>
+              <HouseholdSelect value={form.composition} onChange={v => set('composition', v)} />
+            </div>
+            <div className="form-field">
               <label>Next action</label>
               <input className="form-input" value={form.next_action} onChange={e => set('next_action', e.target.value)} placeholder="e.g. Qualify income source" />
             </div>
@@ -539,6 +544,7 @@ export default function Leads({ onOpenLead }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [councilFilter, setCouncilFilter] = useState('all');
+  const [householdFilter, setHouseholdFilter] = useState('all');
   const [showDead, setShowDead] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -550,6 +556,7 @@ export default function Leads({ onOpenLead }) {
     if (statusFilter !== 'all' && l.status !== statusFilter) return false;
     if (sourceFilter !== 'all' && l.source !== sourceFilter) return false;
     if (councilFilter !== 'all' && l.council !== councilFilter) return false;
+    if (householdFilter !== 'all' && l.composition !== householdFilter) return false;
     return true;
   });
 
@@ -598,6 +605,19 @@ export default function Leads({ onOpenLead }) {
           <Chip key={c} active={councilFilter === c} onClick={() => setCouncilFilter(c)}>{c}</Chip>
         ))}
         <div className="chip-divider" />
+        <span className="chip-group-label">Household</span>
+        <Chip active={householdFilter === 'all'} onClick={() => setHouseholdFilter('all')}>All</Chip>
+        {HOUSEHOLD_TYPES.map(h => (
+          <Chip
+            key={h.id}
+            active={householdFilter === h.id}
+            onClick={() => setHouseholdFilter(h.id)}
+            count={leads.filter(l => l.composition === h.id).length}
+          >
+            {h.id}
+          </Chip>
+        ))}
+        <div className="chip-divider" />
         <Chip active={showDead} onClick={() => setShowDead(!showDead)}>
           {showDead ? 'Hide dead' : 'Show dead'}
         </Chip>
@@ -624,7 +644,10 @@ export default function Leads({ onOpenLead }) {
               return (
                 <tr key={l.id} onClick={() => onOpenLead(l.id)}>
                   <td>
-                    <div className="cell-name">{l.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div className="cell-name">{l.name}</div>
+                      {l.composition && <HouseholdBadge value={l.composition} />}
+                    </div>
                     <div className="cell-sub">{l.id?.slice(0, 8)} · {l.borough || l.council}</div>
                   </td>
                   <td>
