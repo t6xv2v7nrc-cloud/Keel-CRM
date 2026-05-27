@@ -51,7 +51,7 @@ export const StatusPill = ({ status }) => {
   const labels = {
     lead: 'Lead', qualified: 'Qualified', viewing: 'Viewing',
     application: 'Application', referencing: 'Referencing',
-    signed: 'Signed', dead: 'Dead',
+    signed: 'Signed', dead: 'Closed',
   };
   return <span className={`pill ${status}`}>{labels[status] || status}</span>;
 };

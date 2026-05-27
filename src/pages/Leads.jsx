@@ -619,7 +619,7 @@ export default function Leads({ onOpenLead }) {
         ))}
         <div className="chip-divider" />
         <Chip active={showDead} onClick={() => setShowDead(!showDead)}>
-          {showDead ? 'Hide dead' : 'Show dead'}
+          {showDead ? 'Hide closed' : 'Show closed'}
         </Chip>
       </div>
 

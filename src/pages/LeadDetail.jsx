@@ -280,8 +280,25 @@ export default function LeadDetail({ leadId, onBack }) {
   const cancelEdit = () => setEditing(false);
 
   const saveEdit = async () => {
-    await updateLead.mutateAsync({ id: lead.id, ...draft });
-    setEditing(false);
+    try {
+      // Empty strings for date/nullable columns must be sent as null
+      const payload = {
+        ...draft,
+        next_action_due: draft.next_action_due || null,
+        phone:           draft.phone           || null,
+        email:           draft.email           || null,
+        borough:         draft.borough         || null,
+        council:         draft.council         || null,
+        next_action:     draft.next_action     || null,
+        composition:     draft.composition     || null,
+        benefits:        draft.benefits        || null,
+        notes:           draft.notes           || null,
+      };
+      await updateLead.mutateAsync({ id: lead.id, ...payload });
+      setEditing(false);
+    } catch (err) {
+      alert('Save failed: ' + (err?.message || 'Unknown error'));
+    }
   };
 
   const setField = field => e => setDraft(d => ({ ...d, [field]: e.target.value }));
@@ -750,7 +767,7 @@ export default function LeadDetail({ leadId, onBack }) {
           {isDead && (
             <div className="mod" style={{ borderColor: 'rgba(226,92,92,0.30)' }}>
               <div className="mod-head" style={{ borderBottomColor: 'rgba(226,92,92,0.30)' }}>
-                <h3 style={{ color: 'var(--red)' }}>Failure logged</h3>
+                <h3 style={{ color: 'var(--red)' }}>Lead closed</h3>
               </div>
               <div style={{ padding: '14px 20px' }}>
                 <div className="lbl">Reason</div>
@@ -834,10 +851,10 @@ export default function LeadDetail({ leadId, onBack }) {
             style={{ background: 'var(--bg)', border: '1px solid var(--line-2)', padding: 28, width: 'min(440px, 92vw)' }}
           >
             <div style={{ fontSize: 15, color: 'var(--ink)', fontFamily: 'var(--futura)', marginBottom: 6 }}>
-              Mark lead as dead
+              Close lead
             </div>
             <div className="mono" style={{ fontSize: 11, color: 'var(--ink-40)', marginBottom: 18 }}>
-              Select failure reason — feeds analytics donut
+              Select a reason — feeds the failure analytics
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {FAILURE_REASONS.map(r => (
@@ -859,7 +876,7 @@ export default function LeadDetail({ leadId, onBack }) {
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className="btn ghost" onClick={() => setShowFailureModal(false)}>Cancel</button>
               <button className="btn danger" disabled={!selectedFailure} onClick={handleMarkDead}>
-                Mark dead
+                Close lead
               </button>
             </div>
           </div>

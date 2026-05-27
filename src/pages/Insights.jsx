@@ -206,7 +206,7 @@ export default function Insights() {
             <span className="sub">{dead.length} dead</span>
           </div>
           {dead.length === 0 ? (
-            <div className="empty-state">No dead leads yet</div>
+            <div className="empty-state">No closed leads yet</div>
           ) : (
             <div className="donut-wrap">
               <div className="donut">
@@ -214,7 +214,7 @@ export default function Insights() {
                 <div className="center">
                   <div>
                     <div className="big">{dead.length}</div>
-                    <div className="lbl">deaths</div>
+                    <div className="lbl">closed</div>
                   </div>
                 </div>
               </div>
