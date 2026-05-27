@@ -1,6 +1,41 @@
+// All 32 London boroughs + City of London, plus a few neighbouring authorities
+// already in your data (Norwich kept for legacy).
 export const COUNCILS = [
-  'RBKC', 'Harrow', 'Norwich', 'Islington', 'Camden',
-  'Brent', 'Hounslow', 'Newham', 'Southwark', 'Lambeth',
+  'Barking & Dagenham',
+  'Barnet',
+  'Bexley',
+  'Brent',
+  'Bromley',
+  'Camden',
+  'City of London',
+  'Croydon',
+  'Ealing',
+  'Enfield',
+  'Greenwich',
+  'Hackney',
+  'Hammersmith & Fulham',
+  'Haringey',
+  'Harrow',
+  'Havering',
+  'Hillingdon',
+  'Hounslow',
+  'Islington',
+  'RBKC',                  // Kensington & Chelsea
+  'Kingston upon Thames',
+  'Lambeth',
+  'Lewisham',
+  'Merton',
+  'Newham',
+  'Redbridge',
+  'Richmond upon Thames',
+  'Southwark',
+  'Sutton',
+  'Tower Hamlets',
+  'Waltham Forest',
+  'Wandsworth',
+  'Westminster',
+  // Out-of-London (kept from legacy data)
+  'Norwich',
 ];
 
 export const STATUSES = [

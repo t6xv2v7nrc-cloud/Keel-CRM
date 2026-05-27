@@ -59,6 +59,18 @@ export function useCreateLead() {
   });
 }
 
+export function useBulkCreateLeads() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (leads) => {
+      const { data, error } = await supabase.from('leads').insert(leads).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
+  });
+}
+
 export function useUpdateLead() {
   const qc = useQueryClient();
   return useMutation({
