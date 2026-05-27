@@ -29,6 +29,13 @@
   --grey-dark: #3A3A3A;        /* dark grey — secondary emphasis */
   --grey-med:  #5C5C5C;        /* medium grey — supporting text */
 
+  /* Elevation */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.09), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.13), 0 4px 16px rgba(0,0,0,0.06);
+  --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+
   --red-w:      rgba(192,57,43,0.08);
   --red-bold-w: rgba(139,26,26,0.10);
   --green-w:    rgba(30,132,73,0.08);
@@ -1619,5 +1626,190 @@ table.leads tbody tr:hover { background: var(--bg-2); }
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.14); }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.14); border-radius: 4px; transition: background 150ms ease; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.26); }
+
+
+/* ═══════════════════════════════════════════════════════════
+   MOTION · SHADOWS · HOVER POLISH
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Entry keyframes ────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Page ───────────────────────────────────────────────── */
+/* Fires once on mount (React unmounts pages on navigation) */
+.page { animation: fade-up 220ms var(--ease-out) both; }
+
+/* ── Topbar drop shadow ─────────────────────────────────── */
+.topbar {
+  box-shadow: 0 1px 0 var(--line), 0 2px 10px rgba(0,0,0,0.04);
+}
+
+/* ── Sidebar nav ────────────────────────────────────────── */
+.nav-item {
+  transition: color 120ms ease, background 120ms ease;
+  border-radius: 0;
+}
+
+/* ── Cards & modules ────────────────────────────────────── */
+.mod {
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 180ms ease;
+}
+
+.lead-hero {
+  box-shadow: var(--shadow-sm);
+}
+
+.stats-grid {
+  box-shadow: var(--shadow-xs);
+}
+.stat {
+  transition: background 140ms ease;
+}
+.stat:hover {
+  background: var(--bg-1);
+}
+
+/* ── Officer cards — lift on hover ──────────────────────── */
+.officer-card {
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+.officer-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* ── Table rows ─────────────────────────────────────────── */
+table.leads tbody tr {
+  transition: background 100ms ease;
+}
+table.leads tbody tr:hover td:first-child {
+  /* subtle left-edge accent on hover */
+  box-shadow: inset 3px 0 0 var(--ink-40);
+}
+
+/* ── Priority rows ──────────────────────────────────────── */
+.priority {
+  transition: background 100ms ease;
+}
+.priority:hover {
+  box-shadow: inset 3px 0 0 var(--ink-25);
+}
+
+/* ── Buttons ────────────────────────────────────────────── */
+.btn {
+  transition: background 120ms ease, border-color 120ms ease,
+              color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+}
+.btn:hover        { box-shadow: var(--shadow-xs); }
+.btn.primary:hover { box-shadow: 0 2px 10px rgba(10,10,10,0.20); }
+.btn:active       { transform: translateY(1px); box-shadow: none; transition-duration: 60ms; }
+.btn:disabled     { transform: none; box-shadow: none; }
+
+/* ── Icon buttons ───────────────────────────────────────── */
+.icon-btn {
+  transition: color 100ms ease, background 100ms ease;
+  border-radius: 2px;
+}
+
+/* ── Filter chips ───────────────────────────────────────── */
+.chip {
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+/* ── Pin button ─────────────────────────────────────────── */
+.pin-btn {
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+/* ── Form inputs & selects ──────────────────────────────── */
+.form-input,
+.form-select,
+.login-input,
+.status-select {
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.form-input:focus,
+.form-select:focus,
+.login-input:focus {
+  border-color: var(--ink-40);
+  box-shadow: 0 0 0 3px rgba(10,10,10,0.07);
+  outline: none;
+}
+
+/* ── Modal & overlay entry ──────────────────────────────── */
+.modal-overlay {
+  animation: fade-in 140ms ease both;
+}
+.modal-box {
+  animation: fade-up 160ms var(--ease-out) both;
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Composer tab ───────────────────────────────────────── */
+.composer-tab {
+  transition: color 100ms ease;
+}
+
+/* ── Timeline items ─────────────────────────────────────── */
+.tl-item {
+  transition: background 100ms ease;
+}
+.tl-item:hover {
+  background: var(--bg-1);
+}
+
+/* ── Flow steps ─────────────────────────────────────────── */
+.flow-step {
+  transition: background 150ms ease, color 150ms ease;
+}
+
+/* ── Lead avatar ────────────────────────────────────────── */
+.lead-avatar {
+  transition: box-shadow 150ms ease;
+}
+
+/* ── Status pill ────────────────────────────────────────── */
+.pill {
+  transition: opacity 120ms ease, border-color 120ms ease;
+}
+
+/* ── Chip active transition ─────────────────────────────── */
+.chip.active {
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+/* ── Notif panel shadow ─────────────────────────────────── */
+.notif-panel {
+  box-shadow: var(--shadow-lg);
+  animation: fade-up 150ms var(--ease-out) both;
+}
+
+/* ── Search palette ─────────────────────────────────────── */
+.palette {
+  animation: fade-up 160ms var(--ease-out) both;
+}
+.palette-row {
+  transition: background 80ms ease;
+}
+
+/* ── Login box ──────────────────────────────────────────── */
+.login-box {
+  box-shadow: var(--shadow-md);
+  animation: fade-up 240ms var(--ease-out) both;
+}
+.login-btn {
+  transition: background 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+}
+.login-btn:hover { box-shadow: 0 2px 10px rgba(10,10,10,0.18); }
+.login-btn:active { transform: translateY(1px); box-shadow: none; }
