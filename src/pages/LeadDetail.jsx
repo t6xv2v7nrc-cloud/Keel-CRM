@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Icons } from '../components/icons';
-import { StatusPill, SourceTag, Money } from '../components/ui';
+import { StatusPill, SourceTag, Money, CouncilSelect } from '../components/ui';
 import { useLead, useLeadActivity, useUpdateLead, useAddActivity, useCreateLead } from '../hooks/useLeads';
 import { supabase } from '../lib/supabase';
 import { STATUSES, STATUS_FLOW, FAILURE_REASONS } from '../constants';
@@ -160,6 +160,34 @@ export default function LeadDetail({ leadId, onBack }) {
   const [selectedFailure, setSelectedFailure] = useState(null);
   const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({});
+
+  const startEdit = () => {
+    setDraft({
+      name: lead.name || '',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      borough: lead.borough || '',
+      council: lead.council || '',
+      next_action: lead.next_action || '',
+      next_action_due: lead.next_action_due || '',
+      composition: lead.composition || '',
+      benefits: lead.benefits || '',
+      notes: lead.notes || '',
+    });
+    setEditing(true);
+  };
+
+  const cancelEdit = () => setEditing(false);
+
+  const saveEdit = async () => {
+    await updateLead.mutateAsync({ id: lead.id, ...draft });
+    setEditing(false);
+  };
+
+  const setField = field => e => setDraft(d => ({ ...d, [field]: e.target.value }));
+
   const composerRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -272,7 +300,13 @@ export default function LeadDetail({ leadId, onBack }) {
     setSaving(false);
   };
 
-  const initials = lead.name ? lead.name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase() : '??';
+  const displayName = editing ? draft.name : lead.name;
+  const initials = displayName ? displayName.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase() : '??';
+  const inpStyle = {
+    fontFamily: 'var(--futura)', fontSize: 12,
+    background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+    color: 'var(--ink)', padding: '5px 8px', outline: 'none',
+  };
 
   return (
     <div className="page" data-screen-label="Lead Detail">
@@ -286,30 +320,65 @@ export default function LeadDetail({ leadId, onBack }) {
         <div className="lead-hero-top">
           <div className="lead-avatar">{initials}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 className="lead-name">{lead.name}</h2>
-            <div className="lead-contact">
-              {lead.phone && <span><Icons.Phone size={11} />{lead.phone}</span>}
-              {lead.email && <span><Icons.Mail size={11} />{lead.email}</span>}
-              {(lead.borough || lead.council) && (
-                <span><Icons.Pin size={11} />{[lead.borough, lead.council].filter(Boolean).join(', ')}</span>
-              )}
-            </div>
+            {editing ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input
+                  value={draft.name}
+                  onChange={setField('name')}
+                  placeholder="Full name"
+                  style={{ ...inpStyle, fontSize: 18, fontWeight: 600, padding: '6px 10px' }}
+                />
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <input value={draft.phone} onChange={setField('phone')} placeholder="Phone" style={inpStyle} />
+                  <input value={draft.email} onChange={setField('email')} placeholder="Email" style={{ ...inpStyle, minWidth: 180 }} />
+                  <input value={draft.borough} onChange={setField('borough')} placeholder="Borough" style={inpStyle} />
+                  <CouncilSelect
+                    value={draft.council}
+                    onChange={v => setDraft(d => ({ ...d, council: v }))}
+                    className="form-select"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <h2 className="lead-name">{lead.name}</h2>
+                <div className="lead-contact">
+                  {lead.phone && <span><Icons.Phone size={11} />{lead.phone}</span>}
+                  {lead.email && <span><Icons.Mail size={11} />{lead.email}</span>}
+                  {(lead.borough || lead.council) && (
+                    <span><Icons.Pin size={11} />{[lead.borough, lead.council].filter(Boolean).join(', ')}</span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <StatusPill status={lead.status} />
-            <button
-              className={`pin-btn ${lead.pinned ? 'pinned' : ''}`}
-              onClick={() => updateLead.mutate({ id: lead.id, pinned: !lead.pinned })}
-              title={lead.pinned ? 'Unpin from sidebar' : 'Pin to sidebar'}
-            >
-              {lead.pinned ? '⊙ Pinned' : '○ Pin'}
-            </button>
-            <button className="btn" onClick={() => focusComposer('call')}><Icons.Phone size={11} />Log call</button>
-            <button className="btn" onClick={() => focusComposer('note')}><Icons.Note size={11} />Note</button>
-            <button className="btn" onClick={handleShareEmail} title="Share lead via email">
-              <Icons.Mail size={11} />Share
-            </button>
-            <div style={{ position: 'relative' }}>
+            {editing ? (
+              <>
+                <button className="btn ghost" onClick={cancelEdit}>Cancel</button>
+                <button className="btn primary" onClick={saveEdit} disabled={updateLead.isPending}>
+                  {updateLead.isPending ? 'Saving…' : 'Save'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className={`pin-btn ${lead.pinned ? 'pinned' : ''}`}
+                  onClick={() => updateLead.mutate({ id: lead.id, pinned: !lead.pinned })}
+                  title={lead.pinned ? 'Unpin from sidebar' : 'Pin to sidebar'}
+                >
+                  {lead.pinned ? '⊙ Pinned' : '○ Pin'}
+                </button>
+                <button className="btn" onClick={() => focusComposer('call')}><Icons.Phone size={11} />Log call</button>
+                <button className="btn" onClick={() => focusComposer('note')}><Icons.Note size={11} />Note</button>
+                <button className="btn" onClick={handleShareEmail} title="Share lead via email">
+                  <Icons.Mail size={11} />Share
+                </button>
+                <button className="btn ghost" onClick={startEdit}>Edit</button>
+              </>
+            )}
+            {!editing && <div style={{ position: 'relative' }}>
               <button
                 className="icon-btn"
                 onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}
@@ -361,7 +430,7 @@ export default function LeadDetail({ leadId, onBack }) {
                   </button>
                 </div>
               )}
-            </div>
+            </div>}
           </div>
         </div>
 
@@ -387,13 +456,32 @@ export default function LeadDetail({ leadId, onBack }) {
           </div>
           <div className="meta-cell">
             <div className="meta-label">Next Action</div>
-            <div className="meta-value" style={{ fontSize: 13, fontFamily: 'var(--futura)' }}>
-              {lead.next_action || '—'}
-            </div>
-            {lead.next_action_due && (
-              <div className="mono" style={{ fontSize: 10, color: 'var(--amber)', marginTop: 4 }}>
-                Due {lead.next_action_due}
-              </div>
+            {editing ? (
+              <>
+                <input
+                  value={draft.next_action}
+                  onChange={setField('next_action')}
+                  placeholder="Next action…"
+                  style={{ ...inpStyle, marginTop: 4, width: '100%' }}
+                />
+                <input
+                  type="date"
+                  value={draft.next_action_due}
+                  onChange={setField('next_action_due')}
+                  style={{ ...inpStyle, marginTop: 4, fontFamily: 'var(--mono)', fontSize: 10 }}
+                />
+              </>
+            ) : (
+              <>
+                <div className="meta-value" style={{ fontSize: 13, fontFamily: 'var(--futura)' }}>
+                  {lead.next_action || '—'}
+                </div>
+                {lead.next_action_due && (
+                  <div className="mono" style={{ fontSize: 10, color: 'var(--amber)', marginTop: 4 }}>
+                    Due {lead.next_action_due}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -532,21 +620,49 @@ export default function LeadDetail({ leadId, onBack }) {
           <div className="mod">
             <div className="mod-head"><h3>Tenant profile</h3></div>
             <div style={{ padding: '4px 0' }}>
-              {[
-                ['Household', lead.composition || '—'],
-                ['Benefits', lead.benefits || '—'],
-                ['Notes', lead.notes || '—'],
-              ].map(([k, v], i, arr) => (
-                <div key={k} style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  padding: '10px 20px', fontSize: 12,
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
-                  gap: 12,
-                }}>
-                  <span className="lbl" style={{ letterSpacing: '0.10em', flexShrink: 0 }}>{k}</span>
-                  <span style={{ color: 'var(--ink)', fontFamily: 'var(--futura)', textAlign: 'right' }}>{v}</span>
+              {editing ? (
+                <div style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    ['Household', 'composition'],
+                    ['Benefits', 'benefits'],
+                    ['Notes', 'notes'],
+                  ].map(([label, field]) => (
+                    <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span className="lbl" style={{ letterSpacing: '0.10em' }}>{label}</span>
+                      {field === 'notes' ? (
+                        <textarea
+                          value={draft[field]}
+                          onChange={setField(field)}
+                          rows={3}
+                          style={{ ...inpStyle, resize: 'vertical', width: '100%' }}
+                        />
+                      ) : (
+                        <input
+                          value={draft[field]}
+                          onChange={setField(field)}
+                          style={{ ...inpStyle, width: '100%' }}
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                [
+                  ['Household', lead.composition || '—'],
+                  ['Benefits', lead.benefits || '—'],
+                  ['Notes', lead.notes || '—'],
+                ].map(([k, v], i, arr) => (
+                  <div key={k} style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    padding: '10px 20px', fontSize: 12,
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
+                    gap: 12,
+                  }}>
+                    <span className="lbl" style={{ letterSpacing: '0.10em', flexShrink: 0 }}>{k}</span>
+                    <span style={{ color: 'var(--ink)', fontFamily: 'var(--futura)', textAlign: 'right' }}>{v}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
