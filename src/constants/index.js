@@ -64,3 +64,9 @@ export const FAILURE_REASONS = [
 ];
 
 export const OFFICER_TEMPS = ['hot', 'warm', 'cool'];
+
+export const HOUSEHOLD_TYPES = [
+  { id: 'Single', label: 'Single',  bg: 'rgba(100,100,100,0.10)', color: '#3A3A3A' },
+  { id: 'Couple', label: 'Couple',  bg: '#FFF4E0',                color: '#A06800' },
+  { id: 'Family', label: 'Family',  bg: '#E4F4EE',                color: '#1A6B4A' },
+];
