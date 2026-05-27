@@ -45,7 +45,7 @@ export const STATUSES = [
   { id: 'application',  label: 'Application', idx: 3 },
   { id: 'referencing',  label: 'Referencing', idx: 4 },
   { id: 'signed',       label: 'Signed',      idx: 5 },
-  { id: 'dead',         label: 'Dead',        idx: -1 },
+  { id: 'dead',         label: 'Closed',      idx: -1 },
 ];
 
 export const STATUS_FLOW = ['Lead', 'Qualified', 'Viewing', 'Application', 'Referencing', 'Signed'];
