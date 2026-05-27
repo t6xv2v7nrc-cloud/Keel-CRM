@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Icons } from '../components/icons';
+import { CouncilSelect } from '../components/ui';
 import { useOfficers, useCreateOfficer, useOfficerStreak, useBulkCreateOfficers } from '../hooks/useOfficers';
 import { COUNCILS } from '../constants';
 
@@ -311,9 +312,7 @@ function AddOfficerModal({ onClose }) {
           <div className="form-row">
             <div className="form-field">
               <label>Council</label>
-              <select className="form-select" value={form.council} onChange={e => set('council', e.target.value)}>
-                {COUNCILS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <CouncilSelect value={form.council} onChange={v => set('council', v)} />
             </div>
             <div className="form-field">
               <label>Borough</label>

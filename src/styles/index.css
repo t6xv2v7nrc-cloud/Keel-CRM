@@ -21,16 +21,21 @@
   --ink-15:    rgba(10,10,10,0.15);
 
   --red:       #C0392B;
+  --red-bold:  #8B1A1A;        /* deep red — danger, urgent, destructive */
   --green:     #1E8449;
   --amber:     #B7770D;
   --blue:      #2471A3;
   --violet:    #6C3483;
+  --grey-dark: #3A3A3A;        /* dark grey — secondary emphasis */
+  --grey-med:  #5C5C5C;        /* medium grey — supporting text */
 
-  --red-w:     rgba(192,57,43,0.08);
-  --green-w:   rgba(30,132,73,0.08);
-  --amber-w:   rgba(183,119,13,0.08);
-  --blue-w:    rgba(36,113,163,0.08);
-  --violet-w:  rgba(108,52,131,0.08);
+  --red-w:      rgba(192,57,43,0.08);
+  --red-bold-w: rgba(139,26,26,0.10);
+  --green-w:    rgba(30,132,73,0.08);
+  --amber-w:    rgba(183,119,13,0.08);
+  --blue-w:     rgba(36,113,163,0.08);
+  --violet-w:   rgba(108,52,131,0.08);
+  --grey-w:     rgba(58,58,58,0.08);
 
   --futura: 'Futura', 'Futura PT', 'Futura Std', 'ITC Avant Garde Gothic', 'Century Gothic',
             'Avenir Next', Avenir, 'Helvetica Neue', Helvetica, sans-serif;
@@ -300,8 +305,12 @@ input, select, textarea { font-family: inherit; color: var(--ink); }
   border-color: transparent;
 }
 .btn.ghost:hover { color: var(--ink); border-color: var(--line); }
-.btn.danger { color: var(--red); border-color: rgba(226,92,92,0.30); }
-.btn.danger:hover { background: var(--red-w); }
+.btn.danger { color: var(--red-bold); border-color: rgba(139,26,26,0.35); }
+.btn.danger:hover { background: var(--red-bold-w); border-color: var(--red-bold); }
+.btn.danger-solid {
+  background: var(--red-bold); color: #FFFFFF; border-color: var(--red-bold);
+}
+.btn.danger-solid:hover { background: var(--red); border-color: var(--red); }
 .btn.sm { font-size: 10px; padding: 4px 8px; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 

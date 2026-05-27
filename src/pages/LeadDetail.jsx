@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Icons } from '../components/icons';
 import { StatusPill, SourceTag, Money } from '../components/ui';
-import { useLead, useLeadActivity, useUpdateLead, useAddActivity } from '../hooks/useLeads';
+import { useLead, useLeadActivity, useUpdateLead, useAddActivity, useCreateLead } from '../hooks/useLeads';
+import { supabase } from '../lib/supabase';
 import { STATUSES, STATUS_FLOW, FAILURE_REASONS } from '../constants';
 
 function timeAgo(ts) {
@@ -15,17 +16,204 @@ function timeAgo(ts) {
   return `${Math.floor(d / 7)}w ago`;
 }
 
+// ─── Editable fee breakdown ───────────────────────────────────────────────
+
+function FeeBreakdown({ lead, updateLead }) {
+  const [editing, setEditing]   = useState(false);
+  const [value,   setValue]     = useState(lead.value || 0);
+  const [opPct,   setOpPct]     = useState(Math.round((lead.operator_split || 0.45) * 100));
+  const [paPct,   setPaPct]     = useState(Math.round((lead.partner_split  || 0.40) * 100));
+  // Council is computed = 100 - op - pa (must always sum to 100)
+  const coPct = Math.max(0, 100 - opPct - paPct);
+  const total = parseInt(value) || 0;
+  const opCut = Math.round(total * opPct / 100);
+  const paCut = Math.round(total * paPct / 100);
+  const coCut = total - opCut - paCut;
+
+  const save = async () => {
+    await updateLead.mutateAsync({
+      id: lead.id,
+      value: total,
+      operator_split: opPct / 100,
+      partner_split:  paPct / 100,
+      council_fee:    coPct / 100,
+    });
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setValue(lead.value || 0);
+    setOpPct(Math.round((lead.operator_split || 0.45) * 100));
+    setPaPct(Math.round((lead.partner_split  || 0.40) * 100));
+    setEditing(false);
+  };
+
+  return (
+    <div className="mod">
+      <div className="mod-head">
+        <h3>Fee breakdown</h3>
+        <span className="sub">{editing ? 'editing' : 'council incentive'}</span>
+        <div className="right">
+          {!editing ? (
+            <button className="btn ghost sm" onClick={() => setEditing(true)}>Edit splits</button>
+          ) : (
+            <>
+              <button className="btn ghost sm" onClick={cancel}>Cancel</button>
+              <button className="btn sm" onClick={save} disabled={updateLead.isPending}>
+                {updateLead.isPending ? '…' : 'Save'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          {editing ? (
+            <>
+              <span className="mono" style={{ fontSize: 22, color: 'var(--ink-40)' }}>£</span>
+              <input
+                type="number" min="0" step="100"
+                value={value}
+                onChange={e => setValue(e.target.value)}
+                style={{
+                  fontFamily: 'var(--mono)', fontSize: 26, fontWeight: 600, letterSpacing: '-0.03em',
+                  background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+                  color: 'var(--ink)', padding: '4px 10px', width: 160, outline: 'none',
+                }}
+              />
+            </>
+          ) : (
+            <span className="mono" style={{ fontSize: 28, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.03em' }}>
+              £{total.toLocaleString()}
+            </span>
+          )}
+          <span className="lbl">total fee</span>
+        </div>
+
+        <div className="fee-bar">
+          <div className="fee-seg" style={{ background: 'var(--ink)',   color: 'var(--bg)',     flex: opPct || 0.01 }}>{opPct}%</div>
+          <div className="fee-seg" style={{ background: 'var(--ink-40)', color: 'var(--bg)',     flex: paPct || 0.01 }}>{paPct}%</div>
+          <div className="fee-seg" style={{ background: 'var(--bg-3)',  color: 'var(--ink-60)', flex: coPct || 0.01 }}>{coPct}%</div>
+        </div>
+
+        <div className="fee-legend">
+          <div className="fee-row">
+            <span className="swatch" style={{ background: 'var(--ink)' }}></span>
+            You (operator)
+            {editing && (
+              <input
+                type="number" min="0" max="100"
+                value={opPct}
+                onChange={e => {
+                  const v = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                  setOpPct(v);
+                  if (v + paPct > 100) setPaPct(100 - v);
+                }}
+                style={{ width: 50, fontFamily: 'var(--mono)', fontSize: 12, padding: '2px 6px', background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--ink)', marginLeft: 8, outline: 'none' }}
+              />
+            )}
+            <span className="amt">£{opCut.toLocaleString()}</span>
+          </div>
+          <div className="fee-row">
+            <span className="swatch" style={{ background: 'var(--ink-40)' }}></span>
+            Partner {lead.officer_name ? `· ${lead.officer_name}` : '· Sourcing'}
+            {editing && (
+              <input
+                type="number" min="0" max="100"
+                value={paPct}
+                onChange={e => {
+                  const v = Math.max(0, Math.min(100 - opPct, parseInt(e.target.value) || 0));
+                  setPaPct(v);
+                }}
+                style={{ width: 50, fontFamily: 'var(--mono)', fontSize: 12, padding: '2px 6px', background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--ink)', marginLeft: 8, outline: 'none' }}
+              />
+            )}
+            <span className="amt">£{paCut.toLocaleString()}</span>
+          </div>
+          <div className="fee-row">
+            <span className="swatch" style={{ background: 'var(--bg-3)', border: '1px solid var(--line)' }}></span>
+            Council admin <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-25)', marginLeft: 4 }}>(auto)</span>
+            <span className="amt">£{coCut.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {editing && (
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-40)', marginTop: 12, padding: '8px 10px', background: 'var(--bg-2)', borderLeft: '2px solid var(--ink)' }}>
+            Council % auto-balances so the total stays at 100%.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LeadDetail({ leadId, onBack }) {
   const { data: lead, isLoading } = useLead(leadId);
   const { data: activity = [] } = useLeadActivity(leadId);
   const updateLead = useUpdateLead();
   const addActivity = useAddActivity();
+  const createLead = useCreateLead();
 
   const [tab, setTab] = useState('note');
   const [noteText, setNoteText] = useState('');
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [selectedFailure, setSelectedFailure] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const composerRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  // Close overflow menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = () => setMenuOpen(false);
+    window.addEventListener('click', onClick);
+    return () => window.removeEventListener('click', onClick);
+  }, [menuOpen]);
+
+  const focusComposer = (whichTab) => {
+    setTab(whichTab);
+    setTimeout(() => {
+      composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      textareaRef.current?.focus();
+    }, 50);
+  };
+
+  const handleShareEmail = () => {
+    if (!lead) return;
+    const subject = `Lead — ${lead.name}`;
+    const body = [
+      `Name: ${lead.name}`,
+      lead.phone   && `Phone: ${lead.phone}`,
+      lead.email   && `Email: ${lead.email}`,
+      lead.council && `Council: ${lead.council}${lead.borough ? ` / ${lead.borough}` : ''}`,
+      lead.status  && `Status: ${lead.status}`,
+      lead.value   && `Value: £${lead.value.toLocaleString()}`,
+      lead.notes   && `\nNotes:\n${lead.notes}`,
+    ].filter(Boolean).join('\n');
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleDuplicate = async () => {
+    if (!lead) return;
+    setMenuOpen(false);
+    const { id, created_at, updated_at, ...rest } = lead;
+    await createLead.mutateAsync({
+      ...rest,
+      name: `${rest.name} (copy)`,
+      status: 'lead',
+      last_contact_at: null,
+    });
+  };
+
+  const handleDelete = async () => {
+    if (!lead) return;
+    setMenuOpen(false);
+    if (!window.confirm(`Delete "${lead.name}"? This can't be undone.`)) return;
+    const { error } = await supabase.from('leads').delete().eq('id', lead.id);
+    if (!error) onBack();
+    else alert('Delete failed: ' + error.message);
+  };
 
   if (isLoading) return <div className="loading-state">Loading…</div>;
   if (!lead) return <div className="loading-state">Lead not found</div>;
@@ -33,13 +221,6 @@ export default function LeadDetail({ leadId, onBack }) {
   const statusObj = STATUSES.find(s => s.id === lead.status) || STATUSES[0];
   const isDead = lead.status === 'dead';
   const currentIdx = isDead ? -1 : statusObj.idx;
-
-  const operatorPct = lead.operator_split || 0.45;
-  const partnerPct  = lead.partner_split  || 0.40;
-  const councilPct  = lead.council_fee    || 0.15;
-  const operatorCut = Math.round((lead.value || 0) * operatorPct);
-  const partnerCut  = Math.round((lead.value || 0) * partnerPct);
-  const councilCut  = (lead.value || 0) - operatorCut - partnerCut;
 
   const handleStatusChange = (newStatus) => {
     if (newStatus === 'dead') {
@@ -123,9 +304,64 @@ export default function LeadDetail({ leadId, onBack }) {
             >
               {lead.pinned ? '⊙ Pinned' : '○ Pin'}
             </button>
-            <button className="btn" onClick={handleSave}><Icons.Phone size={11} />Log call</button>
-            <button className="btn" onClick={() => { setTab('note'); }}><Icons.Note size={11} />Note</button>
-            <button className="icon-btn"><Icons.Dots size={14} /></button>
+            <button className="btn" onClick={() => focusComposer('call')}><Icons.Phone size={11} />Log call</button>
+            <button className="btn" onClick={() => focusComposer('note')}><Icons.Note size={11} />Note</button>
+            <button className="btn" onClick={handleShareEmail} title="Share lead via email">
+              <Icons.Mail size={11} />Share
+            </button>
+            <div style={{ position: 'relative' }}>
+              <button
+                className="icon-btn"
+                onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}
+                title="More actions"
+              >
+                <Icons.Dots size={14} />
+              </button>
+              {menuOpen && (
+                <div
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    position: 'absolute', top: 36, right: 0, minWidth: 180,
+                    background: 'var(--bg)', border: '1px solid var(--line-2)',
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.18)', zIndex: 50,
+                  }}
+                >
+                  <button
+                    onClick={handleDuplicate}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '10px 14px', background: 'transparent', border: 'none',
+                      color: 'var(--ink)', fontFamily: 'var(--futura)', fontSize: 12,
+                      cursor: 'pointer', borderBottom: '1px solid var(--line)',
+                    }}
+                  >
+                    Duplicate lead
+                  </button>
+                  <button
+                    onClick={handleShareEmail}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '10px 14px', background: 'transparent', border: 'none',
+                      color: 'var(--ink)', fontFamily: 'var(--futura)', fontSize: 12,
+                      cursor: 'pointer', borderBottom: '1px solid var(--line)',
+                    }}
+                  >
+                    Share via email
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '10px 14px', background: 'transparent', border: 'none',
+                      color: 'var(--red)', fontFamily: 'var(--futura)', fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Delete lead
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -180,7 +416,7 @@ export default function LeadDetail({ leadId, onBack }) {
 
       <div className="lead-grid">
         <div>
-          <div className="mod" style={{ marginBottom: 18 }}>
+          <div ref={composerRef} className="mod" style={{ marginBottom: 18 }}>
             <div className="mod-head">
               <h3>Update lead</h3>
               <span className="sub">log activity + change status</span>
@@ -195,6 +431,7 @@ export default function LeadDetail({ leadId, onBack }) {
                   ))}
                 </div>
                 <textarea
+                  ref={textareaRef}
                   value={noteText}
                   onChange={e => setNoteText(e.target.value)}
                   placeholder={
@@ -275,48 +512,7 @@ export default function LeadDetail({ leadId, onBack }) {
             </div>
           )}
 
-          <div className="mod">
-            <div className="mod-head">
-              <h3>Fee breakdown</h3>
-              <span className="sub">council incentive</span>
-            </div>
-            <div style={{ padding: '16px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span className="mono" style={{ fontSize: 28, color: 'var(--ink)', letterSpacing: '-0.03em' }}>
-                  £{(lead.value || 0).toLocaleString()}
-                </span>
-                <span className="lbl">total fee</span>
-              </div>
-              <div className="fee-bar">
-                <div className="fee-seg" style={{ background: 'var(--ink)', color: 'var(--bg)', flex: operatorPct }}>
-                  {Math.round(operatorPct * 100)}%
-                </div>
-                <div className="fee-seg" style={{ background: 'var(--ink-40)', color: 'var(--bg)', flex: partnerPct }}>
-                  {Math.round(partnerPct * 100)}%
-                </div>
-                <div className="fee-seg" style={{ background: 'var(--bg-3)', color: 'var(--ink-60)', flex: councilPct }}>
-                  {Math.round(councilPct * 100)}%
-                </div>
-              </div>
-              <div className="fee-legend">
-                <div className="fee-row">
-                  <span className="swatch" style={{ background: 'var(--ink)' }}></span>
-                  You (operator)
-                  <span className="amt">£{operatorCut.toLocaleString()}</span>
-                </div>
-                <div className="fee-row">
-                  <span className="swatch" style={{ background: 'var(--ink-40)' }}></span>
-                  Partner {lead.officer_name ? `· ${lead.officer_name}` : '· Sourcing'}
-                  <span className="amt">£{partnerCut.toLocaleString()}</span>
-                </div>
-                <div className="fee-row">
-                  <span className="swatch" style={{ background: 'var(--bg-3)', border: '1px solid var(--line)' }}></span>
-                  Council admin
-                  <span className="amt">£{councilCut.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <FeeBreakdown lead={lead} updateLead={updateLead} />
 
           {isDead && (
             <div className="mod" style={{ borderColor: 'rgba(226,92,92,0.30)' }}>

@@ -1,4 +1,51 @@
+import { useState } from 'react';
 import { Icons } from '../icons';
+import { COUNCILS } from '../../constants';
+
+// CouncilSelect — dropdown of all London boroughs with optional "+ custom" entry.
+// `value` is the council name string, `onChange(newValue)`.
+export const CouncilSelect = ({ value, onChange, className = 'form-select' }) => {
+  const [custom, setCustom] = useState(value && !COUNCILS.includes(value));
+  const [customVal, setCustomVal] = useState(custom ? value : '');
+
+  if (custom) {
+    return (
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          className="form-input"
+          style={{ flex: 1 }}
+          value={customVal}
+          onChange={e => { setCustomVal(e.target.value); onChange(e.target.value); }}
+          placeholder="Enter council name"
+          autoFocus
+        />
+        <button
+          type="button"
+          className="btn ghost sm"
+          onClick={() => { setCustom(false); setCustomVal(''); onChange(COUNCILS[0]); }}
+        >
+          ↩
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      className={className}
+      value={value || ''}
+      onChange={e => {
+        if (e.target.value === '__custom__') { setCustom(true); onChange(''); }
+        else onChange(e.target.value);
+      }}
+    >
+      {!value && <option value="">— Select —</option>}
+      {COUNCILS.map(c => <option key={c} value={c}>{c}</option>)}
+      <option value="__custom__">+ Add custom…</option>
+    </select>
+  );
+};
+
 
 export const StatusPill = ({ status }) => {
   const labels = {
