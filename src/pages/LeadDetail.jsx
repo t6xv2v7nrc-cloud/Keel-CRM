@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Icons } from '../components/icons';
 import { StatusPill, SourceTag, Money, CouncilSelect } from '../components/ui';
 import { useLead, useLeadActivity, useUpdateLead, useAddActivity, useCreateLead } from '../hooks/useLeads';
+import { useOfficers } from '../hooks/useOfficers';
 import { supabase } from '../lib/supabase';
 import { STATUSES, STATUS_FLOW, FAILURE_REASONS } from '../constants';
 
@@ -147,6 +148,102 @@ function FeeBreakdown({ lead, updateLead }) {
   );
 }
 
+// ─── Officer picker modal ─────────────────────────────────────────────────
+
+function OfficerPickerModal({ onSelect, onClose }) {
+  const { data: officers = [], isLoading } = useOfficers();
+  const [q, setQ] = useState('');
+
+  const filtered = officers.filter(o => {
+    const s = q.toLowerCase();
+    return !s || o.name?.toLowerCase().includes(s) || o.council?.toLowerCase().includes(s) || o.borough?.toLowerCase().includes(s);
+  });
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.70)', display: 'grid', placeItems: 'center', zIndex: 100 }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--bg)', border: '1px solid var(--line-2)', width: 'min(460px, 94vw)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+      >
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--futura)', fontSize: 14, color: 'var(--ink)' }}>Assign officer</div>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-40)', marginTop: 2 }}>{officers.length} officers · click to assign</div>
+          </div>
+          <button className="icon-btn" onClick={onClose} style={{ fontSize: 16 }}>✕</button>
+        </div>
+        <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
+          <input
+            autoFocus
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Search by name or council…"
+            style={{
+              width: '100%', fontFamily: 'var(--futura)', fontSize: 13,
+              background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+              color: 'var(--ink)', padding: '8px 12px', outline: 'none',
+            }}
+          />
+        </div>
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {isLoading && <div style={{ padding: 24, textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-40)' }}>Loading…</div>}
+          {!isLoading && filtered.length === 0 && (
+            <div style={{ padding: 24, textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-40)' }}>No officers found</div>
+          )}
+          {filtered.map(o => (
+            <button
+              key={o.id}
+              onClick={() => onSelect(o)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                width: '100%', textAlign: 'left', padding: '11px 20px',
+                background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--futura)', fontSize: 11, fontWeight: 600, color: 'var(--ink-60)',
+                flexShrink: 0,
+              }}>
+                {o.name?.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--futura)', fontSize: 13, color: 'var(--ink)' }}>{o.name}</div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-40)', marginTop: 1 }}>
+                  {[o.title, o.council].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+              {o.score != null && (
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-40)' }}>{o.score}pts</div>
+              )}
+            </button>
+          ))}
+          <button
+            onClick={() => onSelect(null)}
+            style={{
+              display: 'block', width: '100%', textAlign: 'left',
+              padding: '11px 20px', background: 'transparent', border: 'none',
+              fontFamily: 'var(--futura)', fontSize: 12, color: 'var(--ink-40)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            Remove officer assignment
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LeadDetail({ leadId, onBack }) {
   const { data: lead, isLoading } = useLead(leadId);
   const { data: activity = [] } = useLeadActivity(leadId);
@@ -162,6 +259,7 @@ export default function LeadDetail({ leadId, onBack }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
+  const [showOfficerPicker, setShowOfficerPicker] = useState(false);
 
   const startEdit = () => {
     setDraft({
@@ -187,6 +285,21 @@ export default function LeadDetail({ leadId, onBack }) {
   };
 
   const setField = field => e => setDraft(d => ({ ...d, [field]: e.target.value }));
+
+  const handleAssignOfficer = async (officer) => {
+    setShowOfficerPicker(false);
+    await updateLead.mutateAsync({
+      id: lead.id,
+      officer_id:   officer ? officer.id   : null,
+      officer_name: officer ? officer.name : null,
+    });
+    addActivity.mutate({
+      lead_id: lead.id,
+      type: 'note',
+      actor: 'You',
+      text: officer ? `assigned officer · ${officer.name}` : 'removed officer assignment',
+    });
+  };
 
   const composerRef = useRef(null);
   const textareaRef = useRef(null);
@@ -444,8 +557,37 @@ export default function LeadDetail({ leadId, onBack }) {
             <div className="meta-value" style={{ fontSize: 13, fontFamily: 'var(--futura)' }}>
               <SourceTag source={lead.source} />
             </div>
-            {lead.officer_name && (
-              <div className="mono" style={{ fontSize: 10, color: 'var(--ink-40)', marginTop: 4 }}>{lead.officer_name}</div>
+          </div>
+          <div className="meta-cell">
+            <div className="meta-label">Officer</div>
+            {lead.officer_name ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--futura)', fontSize: 9, fontWeight: 600, color: 'var(--ink-60)', flexShrink: 0,
+                }}>
+                  {lead.officer_name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="meta-value" style={{ fontSize: 12 }}>{lead.officer_name}</div>
+                  <button
+                    className="btn ghost sm"
+                    style={{ marginTop: 3, padding: '2px 6px', fontSize: 10 }}
+                    onClick={() => setShowOfficerPicker(true)}
+                  >
+                    Change
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="btn ghost sm"
+                style={{ marginTop: 4 }}
+                onClick={() => setShowOfficerPicker(true)}
+              >
+                + Assign
+              </button>
             )}
           </div>
           <div className="meta-cell">
@@ -708,6 +850,13 @@ export default function LeadDetail({ leadId, onBack }) {
             </div>
           </div>
         </div>
+      )}
+
+      {showOfficerPicker && (
+        <OfficerPickerModal
+          onSelect={handleAssignOfficer}
+          onClose={() => setShowOfficerPicker(false)}
+        />
       )}
     </div>
   );
